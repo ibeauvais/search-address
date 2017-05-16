@@ -1,9 +1,10 @@
 package fr.perso.searchaddress.api;
 
 
+import fr.perso.searchaddress.service.SearchService;
 import io.vertx.core.AbstractVerticle;
-import io.vertx.core.buffer.Buffer;
 import io.vertx.core.http.HttpServer;
+import io.vertx.core.json.Json;
 import io.vertx.ext.web.Router;
 import io.vertx.ext.web.client.WebClient;
 
@@ -16,18 +17,20 @@ public class AddressApi extends AbstractVerticle {
         Router router = Router.router(vertx);
         WebClient client = WebClient.create(vertx);
 
-        router.get("/api/address/:searchText").handler(routingContext -> {
-            String searchText = routingContext.request().getParam("searchText");
+        SearchService searchService = new SearchService("localhost", 9200, client);
 
-            client.get(9200,"localhost","/address/address/_search")
-                    .sendJson(Buffer.buffer(""), httpResponseAsyncResult -> {
-
-                    });
-
-            routingContext.response().end(searchText);
-        });
+        router.get("/api/address/search/:searchText")
+                .handler(routingContext -> {
+                    String searchText = routingContext.request().getParam("searchText");
+                    searchService.searchWord(searchText, result ->
+                            routingContext.response()
+                                    .putHeader("content-type", "application/json; charset=utf-8")
+                                    .end(Json.encode(result))
+                    );
+                });
 
         server.requestHandler(router::accept)
                 .listen(8080);
     }
+
 }
